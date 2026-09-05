@@ -1,19 +1,33 @@
+import os
 from flask import Flask, jsonify
 import requests
 from datetime import datetime, timezone, timedelta
+from prometheus_flask_exporter import PrometheusMetrics
 
 
 app = Flask(__name__)
+metrics = PrometheusMetrics(app)
 
-__version__ = "v0.1.0"
+__version__ = "v0.2.0"
 
-SENSEBOX_IDS = [
-    "5eba5fbad46fb8001b799786",
-    "5c21ff8f919bf8001adf2488",
-    "5ade1acf223bd80019a1011c",
-]
+DEFAULT_SENSEBOX_IDS = (
+    "5eba5fbad46fb8001b799786,"
+    "5c21ff8f919bf8001adf2488,"
+    "5ade1acf223bd80019a1011c"
+)
+
+SENSEBOX_IDS = os.environ.get("SENSEBOX_IDS", DEFAULT_SENSEBOX_IDS).split(",")
 
 MAX_AGE = timedelta(hours=1)
+
+
+def get_status(temp):
+    if temp < 10:
+        return "Too Cold"
+    elif temp > 36:
+        return "Too Hot"
+    else:
+        return "Good"
 
 
 @app.route("/version", methods=["GET"])
@@ -60,6 +74,7 @@ def temperature():
     return jsonify({
         "temperature": round(average, 2),
         "unit": "celsius",
+        "status": get_status(average),
         "sensors_used": len(readings)
     })
 

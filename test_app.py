@@ -1,5 +1,5 @@
 import pytest
-from app import app
+from app import app, get_status
 
 
 @pytest.fixture
@@ -15,7 +15,7 @@ def test_version_endpoint(client):
 
     data = response.get_json()
     assert "version" in data
-    assert data["version"] == "v0.1.0"
+    assert data["version"] == "v0.2.0"
 
 
 def test_temperature_endpoint_returns_valid_response(client):
@@ -28,7 +28,25 @@ def test_temperature_endpoint_returns_valid_response(client):
     if response.status_code == 200:
         assert "temperature" in data
         assert "unit" in data
+        assert "status" in data
         assert data["unit"] == "celsius"
         assert isinstance(data["temperature"], (int, float))
     else:
         assert "error" in data
+
+
+def test_get_status_too_cold():
+    assert get_status(5) == "Too Cold"
+
+
+def test_get_status_good():
+    assert get_status(20) == "Good"
+
+
+def test_get_status_too_hot():
+    assert get_status(40) == "Too Hot"
+
+
+def test_metrics_endpoint(client):
+    response = client.get("/metrics")
+    assert response.status_code == 200
