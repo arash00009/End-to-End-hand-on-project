@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hivebox
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/arash00009/End-to-End-hand-on-project.git
+    targetRevision: main
+    path: hivebox-chart
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
