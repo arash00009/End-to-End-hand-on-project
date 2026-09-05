@@ -1,0 +1,6 @@
+HiveBox har installerats!
+
+Kontrollera status:
+  kubectl get pods -l app={{ .Release.Name }}-hivebox
+
+Appen nås via Ingress på: http://localhost:8080

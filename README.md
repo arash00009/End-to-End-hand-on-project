@@ -8,7 +8,7 @@ och gör den användbar för biodlare.
 - [x] Fas 2: Grundkod & Docker
 - [x] Fas 3: API-endpoints & CI
 - [x] Fas 4: Kubernetes & metrics
-- [ ] Fas 5: Cache, storage & Helm
+- [x] Fas 5: Cache, storage & Helm
 - [ ] Fas 6: GitOps & optimering
 - [ ] Fas 7: Capstone
 
@@ -84,3 +84,25 @@ Appen nås sedan på `http://localhost:8080` (port 80 mappas till 8080 i Kind-ko
 ## Metrics
 
 Appen exponerar Prometheus-metrics på `/metrics`, inklusive standardmått för HTTP-requests, svarstider och Python-processinfo.
+
+## Cache och Storage
+
+Appen använder Valkey (Redis-kompatibel) för cachning av temperaturdata i 5 minuter, och MinIO (S3-kompatibel) för att spara periodiska kopior av datan.
+
+### Nya endpoints
+- `GET /cache` — tvingar fram en cache-uppdatering direkt
+- `GET /store` — sparar en kopia av senaste datan till MinIO
+- `GET /readyz` — readiness-check, verifierar att senseBoxar är nåbara
+
+## Installera med Helm
+
+```bash
+helm install hivebox hivebox-chart/
+```
+
+Konfigurerbara värden finns i `hivebox-chart/values.yaml` (image-tag, antal repliker, miljövariabler för Valkey/MinIO m.m.).
+
+Avinstallera:
+```bash
+helm uninstall hivebox
+```
