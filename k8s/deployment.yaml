@@ -16,13 +16,31 @@ spec:
     spec:
       containers:
         - name: hivebox
-          image: hivebox:v0.2.0
+          image: hivebox:v0.3.0
           imagePullPolicy: Never
           ports:
             - containerPort: 5000
           env:
             - name: SENSEBOX_IDS
               value: "5eba5fbad46fb8001b799786,5c21ff8f919bf8001adf2488,5ade1acf223bd80019a1011c"
+            - name: REDIS_HOST
+              value: "valkey"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: MINIO_HOST
+              value: "minio:9000"
+            - name: MINIO_ACCESS_KEY
+              value: "minioadmin"
+            - name: MINIO_SECRET_KEY
+              value: "minioadmin123"
+            - name: MINIO_BUCKET
+              value: "hivebox-data"
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service
