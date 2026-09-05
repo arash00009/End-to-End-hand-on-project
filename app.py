@@ -1,6 +1,6 @@
 from flask import Flask, jsonify
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 app = Flask(__name__)
 
@@ -12,6 +12,8 @@ SENSEBOX_IDS = [
     "5ade1acf223bd80019a1011c",
 ]
 
+MAX_AGE = timedelta(hours=1)
+
 @app.route("/version", methods=["GET"])
 def version():
     return jsonify({"version": __version__})
@@ -19,6 +21,7 @@ def version():
 @app.route("/temperature", methods=["GET"])
 def temperature():
     readings = []
+    now = datetime.now(timezone.utc)
 
     for box_id in SENSEBOX_IDS:
         url = f"https://api.opensensemap.org/boxes/{box_id}"
@@ -30,13 +33,24 @@ def temperature():
         data = response.json()
 
         for sensor in data.get("sensors", []):
-            if sensor.get("title", "").lower() == "temperatur" or sensor.get("title", "").lower() == "temperature":
-                last = sensor.get("lastMeasurement")
-                if last and last.get("value"):
-                    readings.append(float(last["value"]))
+            title = sensor.get("title", "").lower()
+            if title not in ("temperatur", "temperature"):
+                continue
+
+            last = sensor.get("lastMeasurement")
+            if not last or not last.get("value"):
+                continue
+
+            measured_at = datetime.fromisoformat(last["createdAt"].replace("Z", "+00:00"))
+            age = now - measured_at
+
+            if age > MAX_AGE:
+                continue
+
+            readings.append(float(last["value"]))
 
     if not readings:
-        return jsonify({"error": "No temperature data available"}), 503
+        return jsonify({"error": "No fresh temperature data available (within last hour)"}), 503
 
     average = sum(readings) / len(readings)
 
