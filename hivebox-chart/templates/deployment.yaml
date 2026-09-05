@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-hivebox
+  labels:
+    app: {{ .Release.Name }}-hivebox
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-hivebox
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-hivebox
+    spec:
+      containers:
+        - name: hivebox
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 5000
+          env:
+            - name: SENSEBOX_IDS
+              value: {{ .Values.env.senseboxIds | quote }}
+            - name: REDIS_HOST
+              value: {{ .Values.env.redisHost | quote }}
+            - name: REDIS_PORT
+              value: {{ .Values.env.redisPort | quote }}
+            - name: MINIO_HOST
+              value: {{ .Values.env.minioHost | quote }}
+            - name: MINIO_ACCESS_KEY
+              value: {{ .Values.env.minioAccessKey | quote }}
+            - name: MINIO_SECRET_KEY
+              value: {{ .Values.env.minioSecretKey | quote }}
+            - name: MINIO_BUCKET
+              value: {{ .Values.env.minioBucket | quote }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.path }}
+              port: 5000
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
