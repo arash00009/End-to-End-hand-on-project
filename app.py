@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 import requests
 from datetime import datetime, timezone, timedelta
 
+
 app = Flask(__name__)
 
 __version__ = "v0.1.0"
@@ -14,9 +15,11 @@ SENSEBOX_IDS = [
 
 MAX_AGE = timedelta(hours=1)
 
+
 @app.route("/version", methods=["GET"])
 def version():
     return jsonify({"version": __version__})
+
 
 @app.route("/temperature", methods=["GET"])
 def temperature():
@@ -59,6 +62,7 @@ def temperature():
         "unit": "celsius",
         "sensors_used": len(readings)
     })
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
