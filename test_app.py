@@ -15,7 +15,7 @@ def test_version_endpoint(client):
 
     data = response.get_json()
     assert "version" in data
-    assert data["version"] == "v0.2.0"
+    assert data["version"] == "v0.3.0"
 
 
 def test_temperature_endpoint_returns_valid_response(client):
@@ -50,3 +50,40 @@ def test_get_status_too_hot():
 def test_metrics_endpoint(client):
     response = client.get("/metrics")
     assert response.status_code == 200
+
+
+def test_cache_endpoint_returns_valid_response(client):
+    response = client.get("/cache")
+
+    assert response.status_code in (200, 503)
+
+    data = response.get_json()
+
+    if response.status_code == 200:
+        assert "message" in data
+        assert "data" in data
+    else:
+        assert "error" in data
+
+
+def test_store_endpoint_returns_valid_response(client):
+    response = client.get("/store")
+
+    assert response.status_code in (200, 503, 500)
+
+    data = response.get_json()
+
+    if response.status_code == 200:
+        assert "message" in data
+        assert "object" in data
+    else:
+        assert "error" in data
+
+
+def test_readyz_endpoint(client):
+    response = client.get("/readyz")
+
+    assert response.status_code in (200, 503)
+
+    data = response.get_json()
+    assert "status" in data
