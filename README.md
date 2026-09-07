@@ -9,7 +9,7 @@ och gör den användbar för biodlare.
 - [x] Fas 3: API-endpoints & CI
 - [x] Fas 4: Kubernetes & metrics
 - [x] Fas 5: Cache, storage & Helm
-- [ ] Fas 6: GitOps & optimering
+- [x] Fas 6: GitOps & optimering
 - [ ] Fas 7: Capstone
 
 ## Tech stack
@@ -105,4 +105,34 @@ Konfigurerbara värden finns i `hivebox-chart/values.yaml` (image-tag, antal rep
 Avinstallera:
 ```bash
 helm uninstall hivebox
+```
+
+## GitOps med Argo CD
+
+Applikationen deployas deklarativt via Argo CD, som automatiskt synkar klustret mot Helm-chartet i detta repo (`hivebox-chart/`) varje gång `main`-branchen uppdateras.
+
+### Installera Argo CD
+
+```bash
+kubectl create namespace argocd
+kubectl apply -n argocd --server-side -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+```
+
+### Skapa Application
+
+```bash
+kubectl apply -f k8s/argocd/hivebox-application.yaml
+```
+
+Auto-sync och self-heal är aktiverat — ändringar i `hivebox-chart/` på `main` appliceras automatiskt, utan manuell `kubectl apply` eller `helm upgrade`.
+
+### Öppna Argo CD UI
+
+```bash
+kubectl port-forward svc/argocd-server -n argocd 8081:443
+```
+
+Öppna `https://localhost:8081`, logga in med `admin` och lösenordet från:
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 ```
