@@ -24,9 +24,15 @@ spec:
             - containerPort: 9000
           env:
             - name: MINIO_ROOT_USER
-              value: "minioadmin"
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: MINIO_ROOT_USER
             - name: MINIO_ROOT_PASSWORD
-              value: "minioadmin123"
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: MINIO_ROOT_PASSWORD
 ---
 apiVersion: v1
 kind: Service

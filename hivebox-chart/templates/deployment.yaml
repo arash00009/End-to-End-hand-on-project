@@ -30,9 +30,15 @@ spec:
             - name: MINIO_HOST
               value: {{ .Values.env.minioHost | quote }}
             - name: MINIO_ACCESS_KEY
-              value: {{ .Values.env.minioAccessKey | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: MINIO_ROOT_USER
             - name: MINIO_SECRET_KEY
-              value: {{ .Values.env.minioSecretKey | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: MINIO_ROOT_PASSWORD
             - name: MINIO_BUCKET
               value: {{ .Values.env.minioBucket | quote }}
           readinessProbe:
