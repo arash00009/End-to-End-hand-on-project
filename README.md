@@ -1,47 +1,65 @@
 # 🐝 HiveBox
 
-Ett end-to-end DevOps-projekt: ett REST-API som hämtar sensordata (temperatur m.m.) från [openSenseMap](https://opensensemap.org) och gör den användbar för biodlare, byggt genom hela kedjan från kod till produktionsliknande drift i Kubernetes.
+An end-to-end DevOps project: a REST API that fetches sensor data (temperature etc.) from [openSenseMap](https://opensensemap.org) and makes it useful for beekeepers, built all the way from code to production-like operation on Kubernetes.
 
-Projektet är baserat på [DevOps Hive's Dynamic DevOps Roadmap](https://devopsroadmap.io/projects/hivebox/) och har genomförts i sju gradvisa faser: från grundläggande Python-kod till full GitOps-driven Kubernetes-deployment.
+The project follows [DevOps Hive's Dynamic DevOps Roadmap](https://devopsroadmap.io/projects/hivebox/) and was done in seven gradual phases: from basic Python code to a fully GitOps-driven Kubernetes deployment.
 
-## Arkitektur
+## Architecture
+
+```mermaid
+flowchart LR
+    dev[Developer] -->|git push| gh[GitHub repo]
+    gh --> ci[GitHub Actions<br/>lint · test · build]
+    gh -->|watches main| argo[Argo CD]
+    argo -->|syncs hivebox-chart| k8s
+
+    subgraph k8s[Kubernetes · Kind]
+        ing[Ingress-Nginx] --> app[HiveBox API<br/>Flask]
+        app --> valkey[(Valkey<br/>5-min cache)]
+        app --> minio[(MinIO<br/>JSON snapshots)]
+        prom[Prometheus] -->|scrapes /metrics| app
+    end
+
+    user[Client] --> ing
+    app -->|HTTPS| osm[openSenseMap API]
+```
 
 ## Status
 
-- [x] Fas 1: Kickoff & förberedelse
-- [x] Fas 2: Grundkod & Docker
-- [x] Fas 3: API-endpoints & CI
-- [x] Fas 4: Kubernetes & metrics
-- [x] Fas 5: Cache, storage & Helm
-- [x] Fas 6: GitOps med Argo CD
-- [x] Fas 7: Capstone → se relaterat projekt [greenops-cost-estimator](https://github.com/arash00009/greenops-cost-estimator)
+- [x] Phase 1: Kickoff & preparation
+- [x] Phase 2: Base code & Docker
+- [x] Phase 3: API endpoints & CI
+- [x] Phase 4: Kubernetes & metrics
+- [x] Phase 5: Cache, storage & Helm
+- [x] Phase 6: GitOps with Argo CD
+- [x] Phase 7: Capstone → see the related project [greenops-cost-estimator](https://github.com/arash00009/greenops-cost-estimator)
 
 ## Tech stack
 
 Python (Flask), Docker, Kubernetes, Helm, Argo CD, Valkey, MinIO, Prometheus, GitHub Actions
 
-## Köra applikationen
+## Running the application
 
-### Lokalt
+### Locally
 
 ```bash
 python3 app.py
 ```
 
-### Med Docker
+### With Docker
 
 ```bash
 docker build -t hivebox:v0.3.0 .
 docker run --rm -p 5000:5000 hivebox:v0.3.0
 ```
 
-Båda ska skriva ut den aktuella versionen, t.ex. `v0.3.0`.
+Both should print the current version, e.g. `v0.3.0`.
 
-## API-endpoints
+## API endpoints
 
 ### GET /version
 
-Returnerar den aktuella versionen av applikationen.
+Returns the current version of the application.
 
 ```bash
 curl http://localhost:5000/version
@@ -52,7 +70,7 @@ curl http://localhost:5000/version
 
 ### GET /temperature
 
-Returnerar medeltemperaturen från 3 senseBoxar (openSenseMap), läst från cache om tillgänglig, annars hämtad live. Baserat på mätningar som är max 1 timme gamla.
+Returns the average temperature from 3 senseBoxes (openSenseMap), read from the cache if available, otherwise fetched live. Only uses measurements that are at most 1 hour old.
 
 ```bash
 curl http://localhost:5000/temperature
@@ -61,11 +79,11 @@ curl http://localhost:5000/temperature
 {"temperature": 15.12, "unit": "celsius", "status": "Good", "sensors_used": 3}
 ```
 
-Om ingen färsk data finns tillgänglig returneras statuskod 503 med ett felmeddelande.
+If no fresh data is available, the endpoint returns status 503 with an error message.
 
 ### GET /cache
 
-Tvingar fram en cache-uppdatering direkt (utanför den ordinarie 5-minuterscykeln).
+Forces an immediate cache refresh (outside the regular 5-minute cycle).
 
 ```bash
 curl http://localhost:5000/cache
@@ -76,7 +94,7 @@ curl http://localhost:5000/cache
 
 ### GET /store
 
-Sparar en tidsstämplad kopia av senaste temperaturdatan till MinIO.
+Stores a timestamped copy of the latest temperature data in MinIO.
 
 ```bash
 curl http://localhost:5000/store
@@ -87,7 +105,7 @@ curl http://localhost:5000/store
 
 ### GET /readyz
 
-Readiness-check. Returnerar 503 om mer än hälften av senseBoxarna är onåbara.
+Readiness check. Returns 503 if more than half of the senseBoxes are unreachable.
 
 ```bash
 curl http://localhost:5000/readyz
@@ -98,9 +116,9 @@ curl http://localhost:5000/readyz
 
 ### GET /metrics
 
-Exponerar Prometheus-metrics: standardmått för HTTP-requests, svarstider och Python-processinfo.
+Exposes Prometheus metrics: standard HTTP request counters, response times and Python process info.
 
-## Tester
+## Tests
 
 ```bash
 pip install -r requirements.txt
@@ -113,70 +131,70 @@ pytest -v
 flake8 app.py test_app.py --max-line-length=100
 ```
 
-## Köra i Kubernetes (lokalt via Kind)
+## Running on Kubernetes (locally with Kind)
 
 ```bash
-# Skapa klustret
+# Create the cluster
 kind create cluster --name hivebox --config k8s/kind-config.yaml
 
-# Installera Ingress-Nginx
+# Install Ingress-Nginx
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
 
-# Bygg och ladda in imagen
+# Build and load the image
 docker build -t hivebox:v0.3.0 .
 kind load docker-image hivebox:v0.3.0 --name hivebox
 
-# Deploya via Helm
+# Deploy with Helm
 helm install hivebox hivebox-chart/
 ```
 
-Appen nås sedan på `http://localhost:8080` (port 80 mappas till 8080 i Kind-konfigurationen för att undvika lokala portkonflikter).
+The app is then available at `http://localhost:8080` (port 80 is mapped to 8080 in the Kind config to avoid local port conflicts).
 
-Konfigurerbara värden (image-tag, antal repliker, miljövariabler för Valkey/MinIO m.m.) finns i `hivebox-chart/values.yaml`.
+Configurable values (image tag, replica count, environment variables for Valkey/MinIO etc.) are in `hivebox-chart/values.yaml`.
 
-Avinstallera:
+Uninstall:
 ```bash
 helm uninstall hivebox
 ```
 
-## Cache och Storage
+## Cache and storage
 
-Appen använder **Valkey** (Redis-kompatibel) för cachning av temperaturdata i 5 minuter, och **MinIO** (S3-kompatibel) för periodisk lagring av data som JSON-objekt.
+The app uses **Valkey** (Redis-compatible) to cache temperature data for 5 minutes, and **MinIO** (S3-compatible) to periodically store data as JSON objects.
 
-## GitOps med Argo CD
+## GitOps with Argo CD
 
-Applikationen deployas deklarativt via Argo CD, som automatiskt synkar klustret mot Helm-chartet i detta repo (`hivebox-chart/`) varje gång `main`-branchen uppdateras — inga manuella `kubectl apply` eller `helm upgrade` behövs efter första installationen.
+The application is deployed declaratively with Argo CD, which automatically syncs the cluster to the Helm chart in this repo (`hivebox-chart/`) every time `main` is updated. No manual `kubectl apply` or `helm upgrade` is needed after the first install.
 
-### Installera Argo CD
+### Install Argo CD
 
 ```bash
 kubectl create namespace argocd
 kubectl apply -n argocd --server-side -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
 
-### Skapa Application
+### Create the Application
 
 ```bash
 kubectl apply -f k8s/argocd/hivebox-application.yaml
 ```
 
-Auto-sync och self-heal är aktiverat.
+Auto-sync and self-heal are enabled.
 
-### Öppna Argo CD UI
+### Open the Argo CD UI
 
 ```bash
 kubectl port-forward svc/argocd-server -n argocd 8081:443
 ```
 
-Öppna `https://localhost:8081`, logga in med `admin` och lösenordet från:
+Open `https://localhost:8081` and log in as `admin` with the password from:
 ```bash
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 ```
 
-## Relaterat projekt
+## Related project
 
-[**greenops-cost-estimator**](https://github.com/arash00009/greenops-cost-estimator) — Capstone-projektet (Fas 7): ett fristående API som uppskattar molnkostnad och CO2-avtryck för olika cloud-regioner, byggt med samma metodik.
+[**greenops-cost-estimator**](https://github.com/arash00009/greenops-cost-estimator): the capstone project (Phase 7), a standalone API that estimates cloud cost and CO2 footprint for different cloud regions, built with the same method.
 
-## Om projektet
+## About
 
-Byggt av [Arash Rahimi](https://github.com/arash00009) som ett portfolio-projekt för att demonstrera end-to-end DevOps/Platform Engineering-kompetens: från applikationskod till containerisering, CI/CD, Kubernetes, observability och GitOps.
+Built by [Arash Rahimi](https://github.com/arash00009) as a portfolio project to show end-to-end DevOps and platform engineering: from application code to containers, CI/CD, Kubernetes, observability and GitOps.
